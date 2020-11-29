@@ -6,13 +6,8 @@ from .models import User
 class AuthSerializer(serializers.ModelSerializer):
     full_names = serializers.CharField(
         required=True,
-        validators=[
-            UniqueValidator(
-                queryset=User.objects.all(),
-            )
-        ],
         error_messages={
-            'required': 'Your email address is required.',
+            'required': 'Your full names are required.',
         }
     )
     email = serializers.EmailField(
@@ -64,3 +59,39 @@ class AuthSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
+
+class LoginSerializer(serializers.Serializer):
+    full_names = serializers.CharField(max_length=255)
+    email = serializers.EmailField(max_length=255)
+    username = serializers.CharField(max_length=255, read_only=True)
+    password = serializers.CharField(max_length=128, write_only=True)
+    token = serializers.CharField(read_only=True)
+
+    def validate(self, data):
+        email = data.get('email', None)
+        password = data.get('password', None)
+
+        if email is None:
+            raise serializers.ValidationError(
+                'Please, supply an email address.'
+            )
+
+        if password is None:
+            raise serializers.ValidationError(
+                'Please, supply the password.'
+            )
+
+        user = authenticate(username=email, password=password)
+
+        if user is None:
+            raise serializers.ValidationError(
+                'A user with this email and password was not found.'
+            )
+
+        return {
+            'full_names': user.full_names,
+            'email': user.email,
+            'username': user.username,
+            'token': user.token,
+        }
+                
